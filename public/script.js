@@ -53,9 +53,15 @@ socket.on("typing", () => {
 
 // Copy invite link
 copyBtn.addEventListener("click", () => {
-  const inviteLink = window.location.href;
+  const room = window.location.pathname.split("/").pop();
+
+  // Use your actual Vercel frontend domain below:
+  const inviteLink = `https://chat-app-peach-eight.vercel.app/chat/${room}`;
+
   navigator.clipboard.writeText(inviteLink).then(() => {
     copyBtn.textContent = "Copied!";
     setTimeout(() => (copyBtn.textContent = "Copy Invite Link"), 2000);
   });
 });
+
+
