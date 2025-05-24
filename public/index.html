@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Chat Room</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="chat-container">
+    <div class="chat-header">
+      <h2>Room: <span id="room-id"></span></h2>
+      <button id="copy-btn">Copy Invite Link</button>
+    </div>
+
+    <div class="chat-box" id="messages"></div>
+
+    <div class="chat-input">
+        <div id="typing-status" style="margin-left: 20px; color: gray; font-style: italic;"></div>
+
+      <input id="msg" placeholder="Type a message..." autocomplete="off"/>
+      
+      <button id="send-btn">Send</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
