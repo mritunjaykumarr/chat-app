@@ -1,4 +1,6 @@
-const socket = io();
+// Connect to backend on Render
+const socket = io('https://chat-app-z0yp.onrender.com');
+
 const room = window.location.pathname.split("/").pop();
 document.getElementById("room-id").innerText = room;
 
@@ -15,24 +17,17 @@ function appendMessage(message, position) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-
 function sendMessage() {
   const message = msgInput.value.trim();
   if (message) {
-    appendMessage(message, "right"); // Show on your side
+    appendMessage(`You: ${message}`, "right"); // Show your message
     socket.emit("chat-message", message);
     msgInput.value = "";
   }
 }
 
-socket.on("chat-message", (message) => {
-  appendMessage(message, "left"); // Show other person's msg
-});
-
-// Send on button click
 sendBtn.addEventListener("click", sendMessage);
 
-// Send on Enter key
 msgInput.addEventListener("input", () => {
   socket.emit("typing", room);
 });
