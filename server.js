@@ -1,17 +1,24 @@
 const express = require('express');
+const cors = require('cors'); // ✅ Added
 const app = express();
 const http = require('http').createServer(app);
-const io = require('socket.io')(http);
+const io = require('socket.io')(http, {
+  cors: {
+    origin: "*", // ✅ Allow any origin (you can restrict to Vercel domain)
+    methods: ["GET", "POST"]
+  }
+});
 const path = require('path');
 const port = process.env.PORT || 4000;
 
+app.use(cors()); // ✅ Use CORS
 app.use(express.static('public'));
 
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, '/public/home.html'));
 });
 
-app.get('/chat/:room', (req, res) => {
+app.get('/index.html', (req, res) => {
   res.sendFile(path.join(__dirname, '/public/index.html'));
 });
 
