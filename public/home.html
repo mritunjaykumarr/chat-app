@@ -10,7 +10,8 @@
   <script>
     function createRoom() {
       const roomId = Math.random().toString(36).substr(2, 8);
-      window.location.href = `/chat/${roomId}`;
+      // ✅ Use query param
+      window.location.href = `/index.html?room=${roomId}`;
     }
   </script>
 </body>
