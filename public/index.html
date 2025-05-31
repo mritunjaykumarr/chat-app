@@ -4,7 +4,8 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Chat Room</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" href="/favicon.ico" />
 </head>
 <body>
   <div class="chat-container">
@@ -17,12 +18,11 @@
 
     <div class="chat-input">
       <div id="typing-status" style="margin-left: 20px; color: gray; font-style: italic;"></div>
-      <input id="msg" placeholder="Type a message..." autocomplete="off"/>
+      <input id="msg" placeholder="Type a message..." autocomplete="off" />
       <button id="send-btn">Send</button>
     </div>
   </div>
 
-  <!-- ✅ Connect to your deployed Render backend -->
   <script src="https://chat-app-z0yp.onrender.com/socket.io/socket.io.js"></script>
   <script src="script.js"></script>
 </body>
