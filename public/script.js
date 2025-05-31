@@ -1,17 +1,21 @@
-// Connect to your deployed backend
+// ✅ Connect to deployed backend
 const socket = io('https://chat-app-z0yp.onrender.com');
 
-// Get room ID from the URL
-const room = window.location.pathname.split("/").pop();
+// ✅ Get room ID from URL query string
+const urlParams = new URLSearchParams(window.location.search);
+const room = urlParams.get("room");
 document.getElementById("room-id").innerText = room;
 
-// UI Elements
+// Elements
 const msgInput = document.getElementById("msg");
 const messages = document.getElementById("messages");
 const sendBtn = document.getElementById("send-btn");
 const copyBtn = document.getElementById("copy-btn");
 
-// Append message
+// Join room
+socket.emit("join-room", room);
+
+// Send message
 function appendMessage(message, position) {
   const div = document.createElement("div");
   div.textContent = message;
@@ -20,10 +24,6 @@ function appendMessage(message, position) {
   messages.scrollTop = messages.scrollHeight;
 }
 
-// Emit join room
-socket.emit("join-room", room);
-
-// Send message
 function sendMessage() {
   const message = msgInput.value.trim();
   if (message) {
@@ -32,6 +32,7 @@ function sendMessage() {
     msgInput.value = "";
   }
 }
+
 sendBtn.addEventListener("click", sendMessage);
 
 // Typing
@@ -51,17 +52,11 @@ socket.on("typing", () => {
   }, 1000);
 });
 
-// Copy invite link
+// ✅ Copy invite link
 copyBtn.addEventListener("click", () => {
-  const room = window.location.pathname.split("/").pop();
-
-  // Use your actual Vercel frontend domain below:
-  const inviteLink = `https://chat-app-peach-eight.vercel.app/chat/${room}`;
-
+  const inviteLink = `https://chat-app-peach-eight.vercel.app/index.html?room=${room}`;
   navigator.clipboard.writeText(inviteLink).then(() => {
     copyBtn.textContent = "Copied!";
     setTimeout(() => (copyBtn.textContent = "Copy Invite Link"), 2000);
   });
 });
-
-
