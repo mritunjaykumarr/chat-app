@@ -1,44 +1,60 @@
 const express = require('express');
-const cors = require('cors'); // ✅ Added
+const cors = require('cors');
+const path = require('path');
+const http = require('http');
+
 const app = express();
-const http = require('http').createServer(app);
-const io = require('socket.io')(http, {
+const server = http.createServer(app);
+
+// Set up Socket.IO
+const io = require('socket.io')(server, {
   cors: {
-    origin: "*", // ✅ Allow any origin (you can restrict to Vercel domain)
+    origin: "*", // Replace with your frontend domain if needed
     methods: ["GET", "POST"]
   }
 });
-const path = require('path');
+
 const port = process.env.PORT || 4000;
 
-app.use(cors()); // ✅ Use CORS
-app.use(express.static('public'));
+// Middleware
+app.use(cors());
+app.use(express.static(path.join(__dirname, 'public')));
 
+// Serve home.html on root
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/home.html'));
+  res.sendFile(path.join(__dirname, 'public', 'home.html'));
 });
 
-app.get('/index.html', (req, res) => {
-  res.sendFile(path.join(__dirname, '/public/index.html'));
+// Serve index.html for chat rooms
+app.get('/chat/:roomId', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-io.on("connection", socket => {
+// Socket.IO logic
+io.on('connection', socket => {
   console.log('A user connected');
 
-  socket.on("join-room", roomId => {
+  socket.on('join-room', roomId => {
     socket.join(roomId);
     console.log(`User joined room: ${roomId}`);
 
-    socket.on("chat-message", message => {
-      socket.to(roomId).emit("chat-message", message);
+    // Relay messages
+    socket.on('chat-message', message => {
+      socket.to(roomId).emit('chat-message', message);
     });
 
-    socket.on("typing", () => {
-      socket.to(roomId).emit("typing");
+    // Typing indicator
+    socket.on('typing', () => {
+      socket.to(roomId).emit('typing');
     });
+  });
+
+  socket.on('disconnect', () => {
+    console.log('A user disconnected');
   });
 });
 
-http.listen(port, () => {
-  console.log(`Server running on port ${port}`);
+// Start the server
+server.listen(port, () => {
+  console.log(`Server running at http://localhost:${port}`);
 });
