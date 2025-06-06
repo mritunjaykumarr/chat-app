@@ -10,129 +10,13 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         /* Apply Inter font to the entire body */
-      body {
-  margin: 0;
-  font-family: "Segoe UI", sans-serif;
-  background: linear-gradient(135deg, #1d2b64, #f8cdda);
-  height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.chat-container {
-  background: #fff;
-  border-radius: 20px;
-  width: 90%;
-  max-width: 600px;
-  height: 80vh;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.2);
-}
-
-.chat-header {
-  padding: 20px;
-  background: #4e54c8;
-  color: white;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.chat-header button {
-  background-color: #ffffff22;
-  color: white;
-  padding: 8px 12px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  transition: all 0.3s;
-}
-
-.chat-header button:hover {
-  background-color: #ffffff55;
-}
-
-.chat-box {
-  flex: 1;
-  padding: 15px;
-  overflow-y: auto;
-  background-color: #ece5dd;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-
-.chat-input {
-  padding: 15px;
-  display: flex;
-  background: #eee;
-  gap: 10px;
-}
-
-.chat-input input {
-  flex: 1;
-  padding: 10px;
-  border: none;
-  border-radius: 10px;
-  font-size: 16px;
-}
-
-.chat-input button {
-  background-color: #4e54c8;
-  color: white;
-  padding: 10px 18px;
-  border: none;
-  border-radius: 10px;
-  cursor: pointer;
-  font-size: 16px;
-  transition: 0.3s;
-}
-
-.chat-input button:hover {
-  background-color: #3b40a4;
-}
-
-/* Messages styling */
-.message {
-  padding: 10px 14px;
-  border-radius: 20px;
-  max-width: 70%;
-  font-size: 16px;
-  word-wrap: break-word;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  animation: fadeIn 0.25s ease-in forwards;
-}
-
-.message.left {
-  align-self: flex-start;
-  background-color: #ffffff;
-  border-bottom-left-radius: 0;
-}
-
-.message.right {
-  align-self: flex-end;
-  background-color: #dcf8c6; /* WhatsApp green */
-  border-bottom-right-radius: 0;
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
+        body {
+            font-family: 'Inter', sans-serif;
+        }
     </style>
 </head>
-<body class="p-4">
+<!-- The body now uses the same gradient background as your index.html for visual consistency -->
+<body class="p-4 bg-gradient-to-br from-blue-800 to-purple-400 min-h-screen flex justify-center items-center">
     <!-- Main container for the welcome message and button -->
     <div class="bg-white p-8 rounded-xl shadow-lg text-center max-w-md w-full">
         <h1 class="text-3xl font-bold mb-6 text-gray-800">Welcome to Chat App</h1>
