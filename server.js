@@ -1,133 +1,74 @@
-// Connect to the Socket.IO server hosted on Render.
-// Make sure this URL matches your actual Render deployment URL.
-const socket = io('https://chat-app-z0yp.onrender.com');
-
-// Extract room ID from the current window's pathname.
-// Example: if URL is /chat/abc123, pathParts will be ["", "chat", "abc123"]
-const pathParts = window.location.pathname.split('/');
-const room = pathParts[pathParts.length - 1]; // Get the last part, which should be the room ID
-
-// Validate the extracted room ID.
-// Using a custom message box instead of alert() for better user experience in an iFrame.
-if (!room || room === "chat" || !/^[a-z0-9]{6}$/.test(room)) {
-    // Create a message container element
-    const messageContainer = document.createElement('div');
-    messageContainer.style.cssText = `
-        position: fixed;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        background-color: #f8d7da; /* Light red background */
-        color: #721c24; /* Dark red text */
-        border: 1px solid #f5c6cb; /* Red border */
-        padding: 15px 20px;
-        border-radius: 8px;
-        box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-        z-index: 1000;
-        font-family: 'Inter', sans-serif;
-        text-align: center;
-        max-width: 80%;
-    `;
-    messageContainer.textContent = "Error: Room ID missing or invalid in URL. Redirecting to home page...";
-    document.body.appendChild(messageContainer); // Add message to the body
-
-    // Remove message after a delay and redirect to home page
-    setTimeout(() => {
-        messageContainer.remove(); // Remove the message box
-        window.location.href = '/'; // Redirect to the home page
-    }, 3000); // Display for 3 seconds
-
-    // Stop script execution as the room ID is invalid
-    throw new Error("Invalid room ID or missing. Script halted.");
-}
-
-// Display the room ID in the UI
-document.getElementById("room-id").innerText = room;
-
-// Get references to UI elements
-const msgInput = document.getElementById("msg");
-const messages = document.getElementById("messages");
-const sendBtn = document.getElementById("send-btn");
-const copyBtn = document.getElementById("copy-btn");
-const typingStatusDiv = document.getElementById("typing-status");
-
-/**
- * Appends a new message to the chat display.
- * @param {string} message - The text content of the message.
- * @param {'left'|'right'} position - Alignment of the message ('left' for friend, 'right' for self).
- */
-function appendMessage(message, position) {
-    const div = document.createElement("div");
-    // Apply Tailwind classes for styling messages: rounded corners, padding, margin, max-width, colors
-    div.className = `p-2 my-1 rounded-lg max-w-[70%] text-sm ${position === "right" ? 'bg-blue-500 text-white ml-auto' : 'bg-gray-200 text-gray-800 mr-auto'}`;
-    div.textContent = message;
-    messages.appendChild(div);
-    // Scroll to the bottom of the messages container to show the latest message
-    messages.scrollTop = messages.scrollHeight;
-}
-
-// Emit 'join-room' event to the server when the client connects
-socket.emit("join-room", room);
-
-/**
- * Sends a chat message when the send button is clicked or Enter is pressed.
- */
-function sendMessage() {
-    const message = msgInput.value.trim(); // Get message text and remove leading/trailing whitespace
-    if (message) { // Only send if message is not empty
-        appendMessage("You: " + message, "right"); // Display message on the right (local user)
-        socket.emit("chat-message", room, message); // Emit message to the server, including the room ID
-        msgInput.value = ""; // Clear the input field
-    }
-}
-
-// Add event listener for the send button click
-sendBtn.addEventListener("click", sendMessage);
-
-// Add event listener for the Enter key press in the message input field
-msgInput.addEventListener("keypress", (e) => {
-    if (e.key === 'Enter') { // Check if the pressed key is Enter
-        sendMessage(); // Send the message
+const express = require('express');
+const cors = require('cors'); // Import CORS middleware for handling cross-origin requests
+const app = express();
+const http = require('http').createServer(app); // Create an HTTP server using the Express app
+// Initialize Socket.IO with the HTTP server and configure CORS
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "*", // Allow connections from any origin. For production, consider restricting this to your Vercel frontend domain (e.g., 'https://your-vercel-app-domain.vercel.app').
+        methods: ["GET", "POST"] // Specify allowed HTTP methods for CORS requests
     }
 });
+const path = require('path'); // Node.js built-in module for working with file and directory paths
+const port = process.env.PORT || 4000; // Define the port, defaulting to 4000 if not set by environment
 
-// Listen for 'chat-message' events from the server
-socket.on("chat-message", (message) => {
-    appendMessage("Friend: " + message, "left"); // Display received message on the left (friend)
+// Enable CORS for all Express routes. This is important for the frontend (Vercel) to communicate with the backend (Render).
+app.use(cors());
+
+// Serve static files from the 'public' directory.
+// This makes HTML, CSS, and JavaScript files placed in 'public' accessible directly from the web server.
+app.use(express.static(path.join(__dirname, 'public')));
+
+// Define a route for the root URL ('/').
+// When a user visits the root, the 'home.html' file from the 'public' directory is sent.
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'home.html'));
 });
 
-// Listen for 'typing' events from the server
-socket.on("typing", () => {
-    typingStatusDiv.innerText = "Friend is typing..."; // Show typing status
-    clearTimeout(window.typingTimeout); // Clear any existing timeout
-    // Set a new timeout to clear the typing status after a short period
-    window.typingTimeout = setTimeout(() => {
-        typingStatusDiv.innerText = "";
-    }, 1500); // Clear after 1.5 seconds
+// Define a dynamic route for chat rooms (e.g., '/chat/someRoomId').
+// When a user visits such a URL, the 'index.html' file (your main chat interface) is served.
+app.get('/chat/:roomId', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Event listener for copying the invite link
-copyBtn.addEventListener("click", () => {
-    // Construct the invite link using the current hostname and path, assuming Vercel is handling the routing.
-    // This will create a link like 'https://your-vercel-app.vercel.app/chat/abcdef'
-    const inviteLink = window.location.href;
+// Set up Socket.IO connection handling
+io.on("connection", socket => {
+    console.log('A user connected with Socket ID:', socket.id); // Log when a new client connects
 
-    // Use document.execCommand('copy') for clipboard operations in iFrames, as navigator.clipboard might be restricted.
-    try {
-        // Create a temporary textarea to hold the text to copy
-        const tempTextArea = document.createElement('textarea');
-        tempTextArea.value = inviteLink;
-        document.body.appendChild(tempTextArea);
-        tempTextArea.select(); // Select the text in the textarea
-        document.execCommand('copy'); // Execute the copy command
-        document.body.removeChild(tempTextArea); // Remove the temporary textarea
+    // Listen for 'join-room' events emitted by clients
+    socket.on("join-room", roomId => {
+        // Basic validation for the received roomId to prevent joining invalid rooms
+        if (typeof roomId !== 'string' || roomId.trim() === '' || roomId === "chat") {
+            console.warn(`User ${socket.id} attempted to join with an invalid or empty room ID: "${roomId}"`);
+            return; // Exit if the room ID is invalid
+        }
 
-        copyBtn.textContent = "Copied!"; // Change button text to indicate success
-        setTimeout(() => (copyBtn.textContent = "Copy Invite Link"), 2000); // Revert text after 2 seconds
-    } catch (err) {
-        console.error('Failed to copy text:', err);
-        // Fallback for browsers that don't support document.execCommand('copy') well
-        copyBtn.textContent = "Copy Failed!";
-        setTimeout(() => (copyBtn.textContent = "Copy Invite Link"), 2000);
-    }
+        socket.join(roomId); // Add the client's socket to the specified Socket.IO room
+        console.log(`User ${socket.id} joined room: "${roomId}"`);
+
+        // Listen for 'chat-message' events from this client within this specific room
+        // The message is broadcast to all clients in the room *except* the sender.
+        socket.on("chat-message", (roomName, message) => {
+            socket.to(roomName).emit("chat-message", message);
+            console.log(`Message in room "${roomName}" from ${socket.id}: "${message}"`);
+        });
+
+        // Listen for 'typing' events from this client within this specific room
+        // The 'typing' notification is broadcast to all clients in the room *except* the sender.
+        socket.on("typing", (roomName) => {
+            socket.to(roomName).emit("typing");
+            console.log(`User ${socket.id} is typing in room: "${roomName}"`);
+        });
+
+        // Listen for when this specific socket disconnects
+        socket.on('disconnect', () => {
+            console.log('User disconnected from chat:', socket.id);
+            // Optionally, you could emit a 'user-left' message to the room here
+        });
+    });
+});
+
+// Start the HTTP server and listen for incoming connections on the defined port
+http.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });
