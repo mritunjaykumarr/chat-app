@@ -1,60 +1,75 @@
 const express = require('express');
-const cors = require('cors');
-const path = require('path');
-const http = require('http');
-
+const cors = require('cors'); // Import CORS middleware
 const app = express();
-const server = http.createServer(app);
-
-// Set up Socket.IO
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "*", // Replace with your frontend domain if needed
-    methods: ["GET", "POST"]
-  }
+const http = require('http').createServer(app);
+// Initialize Socket.IO with the HTTP server and CORS options
+const io = require('socket.io')(http, {
+    cors: {
+        origin: "*", // Allows connections from any origin. For production, restrict this to your frontend domain.
+        methods: ["GET", "POST"] // Allowed HTTP methods for CORS requests
+    }
 });
+const path = require('path');
+const port = process.env.PORT || 4000; // Use port from environment variable or default to 4000
 
-const port = process.env.PORT || 4000;
-
-// Middleware
+// Enable CORS for all Express routes
 app.use(cors());
+
+// Serve static files from the 'public' directory.
+// This means files like home.html, index.html, script.js, style.css will be accessible directly.
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve home.html on root
+// Route for the home page.
+// When a user visits '/', home.html is served. This page allows creating new chat rooms.
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'home.html'));
+    res.sendFile(path.join(__dirname, 'public', 'home.html'));
 });
 
-// Serve index.html for chat rooms
+// Route for dynamic chat rooms.
+// When a user visits '/chat/someRoomId', index.html (the chat interface) is served.
 app.get('/chat/:roomId', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'));
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Socket.IO logic
-io.on('connection', socket => {
-  console.log('A user connected');
+// Socket.IO connection handling
+io.on("connection", socket => {
+    console.log('A user connected with ID:', socket.id); // Log when a new user connects
 
-  socket.on('join-room', roomId => {
-    socket.join(roomId);
-    console.log(`User joined room: ${roomId}`);
+    // Listen for 'join-room' event from clients
+    socket.on("join-room", roomId => {
+        // Basic validation for roomId
+        if (typeof roomId !== 'string' || roomId.trim() === '') {
+            console.warn(`User ${socket.id} attempted to join with invalid roomId: "${roomId}"`);
+            return;
+        }
 
-    // Relay messages
-    socket.on('chat-message', message => {
-      socket.to(roomId).emit('chat-message', message);
+        socket.join(roomId); // Add the client's socket to the specified room
+        console.log(`User ${socket.id} joined room: "${roomId}"`);
+
+        // Listen for 'chat-message' events from clients in this room
+        socket.on("chat-message", (roomName, message) => {
+            // Ensure the message is sent to the correct room.
+            // `socket.to(roomName).emit(...)` sends the message to all clients in `roomName` EXCEPT the sender.
+            socket.to(roomName).emit("chat-message", message);
+            console.log(`Message in room "${roomName}" from ${socket.id}: "${message}"`);
+        });
+
+        // Listen for 'typing' events from clients in this room
+        socket.on("typing", (roomName) => {
+            // Emit 'typing' event to all clients in `roomName` EXCEPT the sender
+            socket.to(roomName).emit("typing");
+            console.log(`User ${socket.id} is typing in room: "${roomName}"`);
+        });
+
+        // Listen for socket disconnection
+        socket.on('disconnect', () => {
+            console.log('User disconnected:', socket.id);
+            // You could optionally broadcast a 'user-left' message to the room here if needed
+        });
     });
-
-    // Typing indicator
-    socket.on('typing', () => {
-      socket.to(roomId).emit('typing');
-    });
-  });
-
-  socket.on('disconnect', () => {
-    console.log('A user disconnected');
-  });
 });
 
-// Start the server
-server.listen(port, () => {
-  console.log(`Server running at http://localhost:${port}`);
+// Start the HTTP server
+http.listen(port, () => {
+    console.log(`Server running on port ${port}`);
 });
