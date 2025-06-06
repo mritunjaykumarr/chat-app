@@ -1,5 +1,6 @@
-// Connect to the Socket.IO server. By default, it connects to the host that served the page.
-const socket = io();
+// Connect to the Socket.IO server hosted on Render.
+// Make sure this URL matches your actual Render deployment URL.
+const socket = io('https://chat-app-z0yp.onrender.com');
 
 // Extract room ID from the current window's pathname.
 // Example: if URL is /chat/abc123, pathParts will be ["", "chat", "abc123"]
