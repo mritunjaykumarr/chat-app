@@ -1,5 +1,6 @@
+
 {
   "rewrites": [
-    { "source": "/chat/:room", "destination": "/public/index.html" }
+    { "source": "/chat/:roomId", "destination": "/index.html" }
   ]
 }
