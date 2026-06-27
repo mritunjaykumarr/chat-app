@@ -1,9 +1,11 @@
 import { motion } from 'framer-motion'
 import {
   FiDownload,
+  FiEye,
   FiExternalLink,
   FiFileText,
   FiPlayCircle,
+  FiShare2,
 } from 'react-icons/fi'
 import { FaCheck, FaCheckDouble } from 'react-icons/fa'
 
@@ -96,21 +98,33 @@ function MediaBlock({ message, isOwn }) {
       href={message.media_url}
       target="_blank"
       rel="noreferrer"
-      className={`mb-2 flex items-center gap-3 rounded-lg border p-3 transition hover:scale-[1.01] ${frameClass}`}
+      className={`mb-2 block rounded-lg border p-3 transition ${frameClass}`}
     >
-      <span className="flex h-10 w-10 items-center justify-center rounded-lg bg-white/15">
-        <FiFileText />
-      </span>
-      <span className="min-w-0 flex-1">
-        <span className="block truncate text-sm font-semibold">
-          {getFileName(message)}
+      <div className="flex items-center gap-3">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-white/15">
+          <FiFileText />
         </span>
-        <span className="mt-0.5 flex items-center gap-1 text-xs opacity-75">
-          <FiExternalLink />
-          Open document
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-semibold">
+            {getFileName(message)}
+          </span>
+          <span className="mt-0.5 flex items-center gap-1 text-xs opacity-75">
+            <FiExternalLink />
+            Document
+          </span>
         </span>
-      </span>
-      <FiDownload className="shrink-0" />
+      </div>
+      <div className="mt-3 flex items-center gap-4 border-t border-current pt-2 text-xs opacity-80 mix-blend-normal">
+        <div className="flex items-center gap-1 hover:opacity-100">
+          <FiEye /> Preview
+        </div>
+        <div className="flex items-center gap-1 hover:opacity-100">
+          <FiDownload /> Download
+        </div>
+        <div className="flex items-center gap-1 hover:opacity-100">
+          <FiShare2 /> Share
+        </div>
+      </div>
     </a>
   )
 }
@@ -158,6 +172,17 @@ function MessageBubble({ message, isOwn, isDelivered }) {
             <MessageStatus message={message} isDelivered={isDelivered} />
           )}
         </div>
+      </div>
+      
+      {/* Reactions Bar - Mocked to match wireframe */}
+      <div
+        className={`mt-1 flex items-center gap-1 text-sm opacity-90 ${
+          isOwn ? 'justify-end pr-2' : 'justify-start pl-2'
+        }`}
+      >
+        <span className="cursor-pointer rounded-full bg-slate-800/50 px-2 py-0.5 transition hover:scale-110">❤️</span>
+        <span className="cursor-pointer rounded-full bg-slate-800/50 px-2 py-0.5 transition hover:scale-110">👍</span>
+        <span className="cursor-pointer rounded-full bg-slate-800/50 px-2 py-0.5 transition hover:scale-110">😂</span>
       </div>
     </motion.div>
   )

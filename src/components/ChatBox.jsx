@@ -5,9 +5,12 @@ import {
   FiFileText,
   FiImage,
   FiLogOut,
+  FiMic,
   FiPaperclip,
   FiSend,
+  FiSettings,
   FiSmile,
+  FiUsers,
   FiVideo,
   FiWifi,
   FiWifiOff,
@@ -411,21 +414,31 @@ function ChatBox({ roomCode, identity, onLeave }) {
     <div className="app-background flex min-h-screen p-3 text-white sm:p-5">
       <section className="mx-auto flex h-[calc(100vh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-lg border border-white/15 bg-slate-950/55 shadow-card backdrop-blur-2xl sm:h-[calc(100vh-2.5rem)]">
         <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.08] px-4 py-3 sm:px-5">
-          <div className="min-w-0">
+          <div className="flex items-center gap-2">
             <div className="flex items-center gap-2 text-xs uppercase text-slate-300">
               <span
                 className={`h-2.5 w-2.5 rounded-full ${
                   isConnected ? 'bg-emerald-300' : 'bg-amber-300'
                 }`}
               />
-              <span>{connectionLabel}</span>
+              <span className="hidden sm:inline">{connectionLabel}</span>
             </div>
-            <h1 className="mt-1 truncate font-display text-lg font-semibold text-white sm:text-2xl">
+            <h1 className="ml-2 truncate font-display text-lg font-semibold text-white sm:text-2xl">
               {roomCode}
             </h1>
           </div>
 
-          <div className="relative flex items-center gap-2">
+          <div className="relative flex items-center gap-1 sm:gap-2">
+            <button
+              type="button"
+              onClick={() => setShowUsersList((current) => !current)}
+              className="flex items-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.08] px-2 py-1.5 text-sm text-slate-200 transition hover:bg-white/10 sm:px-3 sm:py-2"
+              title="Online Users"
+            >
+              <FiUsers />
+              <span>{otherUsers.length + 1}</span>
+            </button>
+
             <button
               type="button"
               onClick={copyRoomCode}
@@ -436,11 +449,11 @@ function ChatBox({ roomCode, identity, onLeave }) {
             </button>
             <button
               type="button"
-              onClick={() => setShowUsersList((current) => !current)}
-              className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 sm:flex"
+              title="Settings"
+              onClick={() => alert('Settings coming soon!')}
+              className="icon-button"
             >
-              {isConnected ? <FiWifi /> : <FiWifiOff />}
-              <span>{otherUsers.length + 1} online</span>
+              <FiSettings />
             </button>
 
             <AnimatePresence>
@@ -625,6 +638,14 @@ function ChatBox({ roomCode, identity, onLeave }) {
                 className="icon-button"
               >
                 <FiPaperclip />
+              </button>
+              <button
+                type="button"
+                onClick={() => alert('Voice messages coming soon!')}
+                title="Send voice message"
+                className="icon-button"
+              >
+                <FiMic />
               </button>
               <input
                 ref={fileInputRef}
