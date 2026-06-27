@@ -32,3 +32,9 @@ export function getAnonymousIdentity() {
 
   return { id, name }
 }
+
+export function setAnonymousName(name) {
+  if (name && name.trim()) {
+    localStorage.setItem(USER_NAME_KEY, name.trim())
+  }
+}

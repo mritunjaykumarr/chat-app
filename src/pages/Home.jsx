@@ -4,6 +4,7 @@ import { FiCopy, FiLoader, FiLogIn, FiMessageCircle, FiPlus } from 'react-icons/
 import { useNavigate } from 'react-router-dom'
 import RoomCard from '../components/RoomCard.jsx'
 import { hasSupabaseConfig, supabase } from '../supabase/client.js'
+import { setAnonymousName } from '../utils/anonymousIdentity.js'
 import { generateRoomCode } from '../utils/generateRoomCode.js'
 
 function normalizeRoomCode(value) {
@@ -18,6 +19,7 @@ function Home() {
   const [creating, setCreating] = useState(false)
   const [joining, setJoining] = useState(false)
   const [error, setError] = useState('')
+  const [userName, setUserName] = useState(() => localStorage.getItem('anonymous_chat_user_name') || '')
 
   useEffect(() => {
     return () => window.clearTimeout(redirectTimerRef.current)
@@ -28,6 +30,13 @@ function Home() {
       setError('Add your Supabase URL and publishable key in .env first.')
       return
     }
+
+    if (!userName.trim()) {
+      setError('Please enter your name first.')
+      return
+    }
+
+    setAnonymousName(userName)
 
     setCreating(true)
     setError('')
@@ -81,6 +90,13 @@ function Home() {
       setError('Add your Supabase URL and publishable key in .env first.')
       return
     }
+
+    if (!userName.trim()) {
+      setError('Please enter your name first.')
+      return
+    }
+
+    setAnonymousName(userName)
 
     const roomCode = normalizeRoomCode(joinCode)
 
@@ -144,7 +160,19 @@ function Home() {
           </p>
         </motion.div>
 
-        <div className="mt-10 grid gap-4 md:grid-cols-2">
+        <div className="mt-8 max-w-sm">
+          <label className="mb-2 block text-sm font-medium text-slate-300">
+            Your Name
+          </label>
+          <input
+            value={userName}
+            onChange={(e) => setUserName(e.target.value)}
+            placeholder="Enter your name"
+            className="field-input"
+          />
+        </div>
+
+        <div className="mt-6 grid gap-4 md:grid-cols-2">
           <RoomCard
             icon={FiPlus}
             title="Create Room"

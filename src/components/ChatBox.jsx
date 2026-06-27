@@ -75,6 +75,7 @@ function ChatBox({ roomCode, identity, onLeave }) {
   const [channelStatus, setChannelStatus] = useState('CONNECTING')
   const [onlineUsers, setOnlineUsers] = useState([])
   const [typingUsers, setTypingUsers] = useState([])
+  const [showUsersList, setShowUsersList] = useState(false)
 
   const bottomRef = useRef(null)
   const fileInputRef = useRef(null)
@@ -424,7 +425,7 @@ function ChatBox({ roomCode, identity, onLeave }) {
             </h1>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="relative flex items-center gap-2">
             <button
               type="button"
               onClick={copyRoomCode}
@@ -433,10 +434,50 @@ function ChatBox({ roomCode, identity, onLeave }) {
             >
               <FiCopy />
             </button>
-            <div className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-slate-200 sm:flex">
+            <button
+              type="button"
+              onClick={() => setShowUsersList((current) => !current)}
+              className="hidden items-center gap-2 rounded-lg border border-white/10 bg-white/[0.08] px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10 sm:flex"
+            >
               {isConnected ? <FiWifi /> : <FiWifiOff />}
               <span>{otherUsers.length + 1} online</span>
-            </div>
+            </button>
+
+            <AnimatePresence>
+              {showUsersList && (
+                <motion.div
+                  initial={{ opacity: 0, y: 8, scale: 0.98 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: 8, scale: 0.98 }}
+                  className="absolute right-12 top-full z-10 mt-2 w-64 rounded-lg border border-white/15 bg-slate-900/95 p-3 shadow-card backdrop-blur-xl"
+                >
+                  <h3 className="mb-2 text-xs font-semibold uppercase text-slate-400">
+                    Online Members
+                  </h3>
+                  <ul className="max-h-60 space-y-2 overflow-y-auto pr-1">
+                    {[{ sender_id: identity.id, sender_name: identity.name }, ...otherUsers].map(
+                      (user) => (
+                        <li
+                          key={user.sender_id}
+                          className="flex items-center gap-3 rounded bg-white/5 p-2"
+                        >
+                          <img
+                            src={`https://api.dicebear.com/9.x/initials/svg?seed=${encodeURIComponent(user.sender_name)}&backgroundColor=0ea5e9&textColor=ffffff`}
+                            alt={user.sender_name}
+                            className="h-8 w-8 rounded-full bg-slate-800"
+                          />
+                          <span className="truncate text-sm text-white">
+                            {user.sender_name}
+                            {user.sender_id === identity.id && <span className="text-slate-400"> (You)</span>}
+                          </span>
+                        </li>
+                      ),
+                    )}
+                  </ul>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
             <button
               type="button"
               onClick={onLeave}
