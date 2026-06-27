@@ -136,7 +136,7 @@ function Home() {
             Anonymous realtime chat
           </div>
           <h1 className="font-display text-4xl font-bold leading-tight text-white sm:text-6xl">
-            Create a room, share the code, chat instantly.
+            Welcome to the Prince Anonymous chat
           </h1>
           <p className="mt-5 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
             No signup, no accounts, no profiles. Just a temporary room code,
