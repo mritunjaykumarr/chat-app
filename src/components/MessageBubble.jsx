@@ -5,6 +5,7 @@ import {
   FiCheck,
   FiClock,
   FiCopy,
+  FiCornerUpLeft,
   FiDownload,
   FiEdit2,
   FiEye,
@@ -196,9 +197,11 @@ function MessageBubble({
   onEdit,
   onDelete,
   onToggleReaction,
+  onReply,
 }) {
   const [menuOpen, setMenuOpen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [dragX, setDragX] = useState(0)
   const longPressTimerRef = useRef(null)
 
   const [now] = useState(() => Date.now())
@@ -290,8 +293,37 @@ function MessageBubble({
         </div>
       )}
 
-      {/* Main Bubble Container */}
-      <div
+      {/* Swipe to reply reveal icon */}
+      {dragX > 15 && (
+        <div
+          className={`absolute ${
+            isOwn ? 'right-[90%]' : 'left-[90%]'
+          } top-1/2 -translate-y-1/2 z-10 flex h-7 w-7 items-center justify-center rounded-full bg-emerald-500 text-white shadow-md`}
+        >
+          <FiCornerUpLeft className="text-sm" />
+        </div>
+      )}
+
+      {/* Main Bubble Container with Swipe to Reply */}
+      <motion.div
+        drag={isDeleted ? false : 'x'}
+        dragConstraints={{ left: 0, right: 65 }}
+        dragElastic={0.16}
+        dragSnapToOrigin={true}
+        onDrag={(e, info) => setDragX(Math.max(0, info.offset.x))}
+        onDragEnd={(e, info) => {
+          setDragX(0)
+          if (info.offset.x > 40 && !isDeleted) {
+            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+              try {
+                navigator.vibrate(35)
+              } catch {
+                // ignore
+              }
+            }
+            onReply?.(message)
+          }
+        }}
         className={`relative w-fit max-w-[85%] min-w-0 px-3 py-1.5 shadow-sm transition-all sm:max-w-[72%] ${bubbleShape} ${
           isOwn
             ? isFailed
@@ -356,6 +388,22 @@ function MessageBubble({
           </div>
         ) : (
           <>
+            {/* Quoted Message Preview */}
+            {message.reply_to && (
+              <div className="mb-1.5 flex overflow-hidden rounded-md border-l-[3.5px] border-emerald-400 bg-black/25 text-left text-xs select-none">
+                <div className="p-1.5 min-w-0 flex-1">
+                  <span className="block truncate font-semibold text-emerald-300 text-[11px]">
+                    {message.reply_to.sender_name || 'User'}
+                  </span>
+                  <span className="block truncate text-slate-200 text-[11px] opacity-85">
+                    {message.reply_to.media_type === 'audio'
+                      ? '🎤 Voice message'
+                      : message.reply_to.message || 'Attachment'}
+                  </span>
+                </div>
+              </div>
+            )}
+
             <MediaBlock message={message} isOwn={isOwn} />
 
             {/* Message Body & Inline WhatsApp Timestamp */}
@@ -439,90 +487,118 @@ function MessageBubble({
         {/* Dropdown Action Menu */}
         <AnimatePresence>
           {menuOpen && !isDeleted && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className={`absolute top-full z-30 mt-1 min-w-[150px] rounded-xl border border-white/15 bg-slate-900/95 p-1.5 text-xs text-white shadow-card backdrop-blur-xl ${
-                isOwn ? 'right-0' : 'left-0'
-              }`}
-            >
-              {/* Quick Reactions in Menu */}
-              <div className="flex items-center justify-between gap-1 border-b border-white/10 px-1 py-1 mb-1">
-                {QUICK_EMOJIS.map((emoji) => (
+            <>
+              {/* Invisible backdrop to dismiss on outside click / tap */}
+              <div
+                className="fixed inset-0 z-30 cursor-default"
+                onClick={(e) => {
+                  e.stopPropagation()
+                  setMenuOpen(false)
+                }}
+                onTouchStart={(e) => {
+                  e.stopPropagation()
+                  setMenuOpen(false)
+                }}
+              />
+
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className={`absolute top-full z-40 mt-1 min-w-[150px] rounded-xl border border-white/15 bg-slate-900/95 p-1.5 text-xs text-white shadow-card backdrop-blur-xl ${
+                  isOwn ? 'right-0' : 'left-0'
+                }`}
+              >
+                {/* Quick Reactions in Menu */}
+                <div className="flex items-center justify-between gap-1 border-b border-white/10 px-1 py-1 mb-1">
+                  {QUICK_EMOJIS.map((emoji) => (
+                    <button
+                      key={emoji}
+                      type="button"
+                      onClick={() => {
+                        onToggleReaction?.(message.id, emoji)
+                        setMenuOpen(false)
+                      }}
+                      className="transform text-base p-0.5 transition hover:scale-125 active:scale-95"
+                      title={emoji}
+                    >
+                      {emoji}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Reply Action */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    onReply?.(message)
+                  }}
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10 text-emerald-300"
+                >
+                  <FiCornerUpLeft className="text-sm" />
+                  <span>Reply</span>
+                </button>
+
+                {message.message && (
                   <button
-                    key={emoji}
+                    type="button"
+                    onClick={handleCopy}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10"
+                  >
+                    {copied ? (
+                      <FiCheck className="text-cyan-300" />
+                    ) : (
+                      <FiCopy />
+                    )}
+                    <span>{copied ? 'Copied' : 'Copy'}</span>
+                  </button>
+                )}
+
+                {canEdit && (
+                  <button
                     type="button"
                     onClick={() => {
-                      onToggleReaction?.(message.id, emoji)
                       setMenuOpen(false)
+                      onEdit?.(message)
                     }}
-                    className="transform text-base p-0.5 transition hover:scale-125 active:scale-95"
-                    title={emoji}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10 text-cyan-200"
                   >
-                    {emoji}
+                    <FiEdit2 />
+                    <span>Edit</span>
                   </button>
-                ))}
-              </div>
+                )}
 
-              {message.message && (
-                <button
-                  type="button"
-                  onClick={handleCopy}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10"
-                >
-                  {copied ? (
-                    <FiCheck className="text-cyan-300" />
-                  ) : (
-                    <FiCopy />
-                  )}
-                  <span>{copied ? 'Copied' : 'Copy'}</span>
-                </button>
-              )}
-
-              {canEdit && (
                 <button
                   type="button"
                   onClick={() => {
                     setMenuOpen(false)
-                    onEdit?.(message)
+                    onDelete?.(message, 'me')
                   }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10 text-cyan-200"
+                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10 text-slate-300"
                 >
-                  <FiEdit2 />
-                  <span>Edit</span>
+                  <FiTrash2 />
+                  <span>Delete for me</span>
                 </button>
-              )}
 
-              <button
-                type="button"
-                onClick={() => {
-                  setMenuOpen(false)
-                  onDelete?.(message, 'me')
-                }}
-                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-white/10 text-slate-300"
-              >
-                <FiTrash2 />
-                <span>Delete for me</span>
-              </button>
-
-              {canDeleteForEveryone && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMenuOpen(false)
-                    onDelete?.(message, 'everyone')
-                  }}
-                  className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-rose-500/20 text-rose-300"
-                >
-                  <FiSlash />
-                  <span>Delete for everyone</span>
-                </button>
-              )}
-            </motion.div>
+                {canDeleteForEveryone && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setMenuOpen(false)
+                      onDelete?.(message, 'everyone')
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left transition hover:bg-rose-500/20 text-rose-300"
+                  >
+                    <FiSlash />
+                    <span>Delete for everyone</span>
+                  </button>
+                )}
+              </motion.div>
+            </>
           )}
         </AnimatePresence>
-      </div>
+      </motion.div>
 
       {/* WhatsApp Reaction Chips Overlapping Below Bubble */}
       {reactionEntries.length > 0 && !isDeleted && (

@@ -32,6 +32,7 @@ create table if not exists public.messages (
   deleted_at timestamptz,
   edited_at timestamptz,
   reactions jsonb default '{}'::jsonb,
+  reply_to jsonb,
   is_seen boolean not null default false,
   created_at timestamptz not null default now()
 );
@@ -89,7 +90,7 @@ grant usage on schema public to anon, authenticated;
 grant select, insert on public.rooms to anon, authenticated;
 grant select, insert on public.messages to anon, authenticated;
 grant update on public.rooms to anon, authenticated;
-grant update (is_seen, deleted_at, edited_at, reactions) on public.messages to anon, authenticated;
+grant update (is_seen, deleted_at, edited_at, reactions, reply_to) on public.messages to anon, authenticated;
 
 insert into storage.buckets (id, name, public, file_size_limit)
 values ('chat-media', 'chat-media', true, 52428800)

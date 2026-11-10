@@ -5,6 +5,7 @@ import {
   FiCheck,
   FiCornerDownLeft,
   FiCopy,
+  FiDownload,
   FiGlobe,
   FiLogOut,
   FiMoon,
@@ -15,6 +16,7 @@ import {
   FiX,
 } from 'react-icons/fi'
 import { AVATAR_COLOR_PRESETS, useSettings } from '../../context/SettingsContext.jsx'
+import { usePWAInstall } from '../../hooks/usePWAInstall.js'
 
 function SettingsModal({ isOpen, onClose, roomCode, onLeaveRoom }) {
   const {
@@ -24,6 +26,8 @@ function SettingsModal({ isOpen, onClose, roomCode, onLeaveRoom }) {
     notificationPermission,
     requestNotificationPermission,
   } = useSettings()
+
+  const { isInstallable, isInstalled, promptInstall } = usePWAInstall()
 
   const [nameInput, setNameInput] = useState(settings.nickname || '')
   const [copiedLink, setCopiedLink] = useState(false)
@@ -331,25 +335,38 @@ function SettingsModal({ isOpen, onClose, roomCode, onLeaveRoom }) {
               </div>
             </div>
 
-            {/* 5. Room Actions: Copy Invite Link & Leave */}
-            <div className="grid gap-2 sm:grid-cols-2 pt-2">
-              <button
-                type="button"
-                onClick={handleCopyInvite}
-                className="secondary-button w-full text-xs sm:text-sm"
-              >
-                {copiedLink ? <FiCheck className="text-cyan-300" /> : <FiCopy />}
-                <span>{copiedLink ? 'Link Copied!' : 'Copy Invite Link'}</span>
-              </button>
+            {/* 5. Room Actions: Copy Invite Link, Install App & Leave */}
+            <div className="space-y-2 pt-2">
+              {isInstallable && !isInstalled && (
+                <button
+                  type="button"
+                  onClick={promptInstall}
+                  className="primary-button w-full text-xs sm:text-sm py-2.5 font-bold"
+                >
+                  <FiDownload className="text-base" />
+                  <span>Install App to Home Screen</span>
+                </button>
+              )}
 
-              <button
-                type="button"
-                onClick={onLeaveRoom}
-                className="flex items-center justify-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/20 py-2.5 text-xs sm:text-sm font-bold text-rose-200 hover:bg-rose-500/30 hover:text-white transition"
-              >
-                <FiLogOut />
-                <span>Leave Room</span>
-              </button>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleCopyInvite}
+                  className="secondary-button w-full text-xs sm:text-sm"
+                >
+                  {copiedLink ? <FiCheck className="text-cyan-300" /> : <FiCopy />}
+                  <span>{copiedLink ? 'Link Copied!' : 'Copy Invite Link'}</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={onLeaveRoom}
+                  className="flex items-center justify-center gap-2 rounded-lg border border-rose-400/30 bg-rose-500/20 py-2.5 text-xs sm:text-sm font-bold text-rose-200 hover:bg-rose-500/30 hover:text-white transition"
+                >
+                  <FiLogOut />
+                  <span>Leave Room</span>
+                </button>
+              </div>
             </div>
           </div>
         </motion.div>

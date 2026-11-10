@@ -4,7 +4,7 @@ import { FiCopy, FiLoader, FiLogIn, FiMessageCircle, FiPlus } from 'react-icons/
 import { useNavigate } from 'react-router-dom'
 import RoomCard from '../components/RoomCard.jsx'
 import { hasSupabaseConfig, supabase } from '../supabase/client.js'
-import { ensureAnonymousUser, setAnonymousName } from '../utils/anonymousIdentity.js'
+import { ensureAnonymousUser, getAnonymousIdentity, setAnonymousName } from '../utils/anonymousIdentity.js'
 import { generateRoomCode } from '../utils/generateRoomCode.js'
 
 function normalizeRoomCode(value) {
@@ -44,7 +44,8 @@ function Home() {
 
     try {
       const user = await ensureAnonymousUser()
-      const creatorId = user?.id || localStorage.getItem('anonymous_chat_user_id')
+      const currentIdentity = getAnonymousIdentity()
+      const creatorId = user?.id || currentIdentity.id
 
       for (let attempt = 0; attempt < 8; attempt += 1) {
         const roomCode = generateRoomCode()
@@ -67,6 +68,7 @@ function Home() {
           .insert({ room_code: roomCode, creator_id: creatorId })
 
         if (!insertError) {
+          localStorage.setItem(`is_creator_${roomCode}`, 'true')
           setCreatedRoom(roomCode)
           redirectTimerRef.current = window.setTimeout(() => {
             navigate(`/room/${roomCode}`)

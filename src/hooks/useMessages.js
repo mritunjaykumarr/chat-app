@@ -238,7 +238,7 @@ export function useMessages(roomCode, identity, options = {}) {
   // 5. Send message with Optimistic UI
   const performSend = useCallback(
     async (tempId, payload) => {
-      const { text, file, isAudio, audioBlob, duration, ext, mimeType } = payload
+      const { text, file, isAudio, audioBlob, duration, ext, mimeType, replyTo } = payload
       let mediaUrl = null
       let computedMediaType = isAudio ? 'audio' : null
       let messageText = (text || '').trim()
@@ -296,6 +296,7 @@ export function useMessages(roomCode, identity, options = {}) {
           message: messageText,
           media_url: mediaUrl,
           media_type: computedMediaType,
+          reply_to: replyTo || null,
           is_seen: false,
         }
 
@@ -336,7 +337,7 @@ export function useMessages(roomCode, identity, options = {}) {
   )
 
   const sendMessage = useCallback(
-    ({ text, file, previewUrl }) => {
+    ({ text, file, previewUrl, replyTo }) => {
       const trimmed = (text || '').trim()
       if (!trimmed && !file) return
 
@@ -353,10 +354,11 @@ export function useMessages(roomCode, identity, options = {}) {
         message: trimmed || (mediaType === 'document' ? file.name : ''),
         media_url: previewUrl || null,
         media_type: mediaType,
+        reply_to: replyTo || null,
         is_seen: false,
         created_at: new Date().toISOString(),
         status: 'sending',
-        _payload: { text: trimmed, file, mediaType },
+        _payload: { text: trimmed, file, mediaType, replyTo },
       }
 
       setMessages((current) => [...current, optimisticMsg])

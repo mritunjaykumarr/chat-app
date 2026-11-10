@@ -3,6 +3,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import {
   FiAlertCircle,
   FiChevronLeft,
+  FiCornerUpLeft,
   FiEdit2,
   FiFileText,
   FiImage,
@@ -47,6 +48,8 @@ function MessageInput({
   editingMessage,
   onCancelEdit,
   onSaveEdit,
+  replyingTo,
+  onCancelReply,
 }) {
   const [text, setText] = useState('')
   const [file, setFile] = useState(null)
@@ -55,12 +58,19 @@ function MessageInput({
   const [emojiOpen, setEmojiOpen] = useState(false)
   const [slideOffset, setSlideOffset] = useState(0)
 
+  const inputRef = useRef(null)
   const fileInputRef = useRef(null)
   const typingTimeoutRef = useRef(null)
   const previewUrlRef = useRef('')
   const touchStartRef = useRef(0)
 
   const prevEditingIdRef = useRef(null)
+
+  useEffect(() => {
+    if (replyingTo) {
+      inputRef.current?.focus()
+    }
+  }, [replyingTo])
 
   useEffect(() => {
     if (editingMessage && editingMessage.id !== prevEditingIdRef.current) {
@@ -157,6 +167,14 @@ function MessageInput({
       text: trimmed,
       file,
       previewUrl,
+      replyTo: replyingTo
+        ? {
+            id: replyingTo.id,
+            sender_name: replyingTo.sender_name,
+            message: replyingTo.message,
+            media_type: replyingTo.media_type,
+          }
+        : null,
     })
 
     setText('')
@@ -164,6 +182,7 @@ function MessageInput({
     setEmojiOpen(false)
     window.clearTimeout(typingTimeoutRef.current)
     onTyping?.(false)
+    onCancelReply?.()
   }
 
   const { settings } = useSettings()
@@ -289,6 +308,40 @@ function MessageInput({
               }}
               className="ml-2 text-cyan-300 hover:text-white"
               title="Cancel edit"
+            >
+              <FiX className="text-sm" />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Replying Banner */}
+      <AnimatePresence>
+        {replyingTo && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 6 }}
+            className="mb-2 flex items-center justify-between rounded-xl border border-emerald-400/40 bg-[#005c4b]/30 px-3 py-1.5 text-xs text-emerald-200 shadow-soft backdrop-blur-md"
+          >
+            <div className="flex items-center gap-2 truncate">
+              <FiCornerUpLeft className="text-sm shrink-0 text-emerald-400" />
+              <div className="truncate">
+                <span className="font-semibold text-emerald-300">
+                  Replying to {replyingTo.sender_name}:
+                </span>{' '}
+                <span className="text-slate-200 opacity-85">
+                  {replyingTo.media_type === 'audio'
+                    ? '🎤 Voice message'
+                    : replyingTo.message || 'Attachment'}
+                </span>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={onCancelReply}
+              className="text-emerald-200 hover:text-white ml-2"
+              title="Cancel reply"
             >
               <FiX className="text-sm" />
             </button>
@@ -449,6 +502,7 @@ function MessageInput({
 
             <div className="min-w-0 flex-1 rounded-xl border border-white/15 bg-white/10 px-3 py-1.5 sm:py-2">
               <textarea
+                ref={inputRef}
                 value={text}
                 onChange={handleTextChange}
                 onKeyDown={handleKeyDown}

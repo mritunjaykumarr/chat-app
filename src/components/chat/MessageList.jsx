@@ -55,6 +55,7 @@ function MessageList({
   onEdit,
   onDelete,
   onToggleReaction,
+  onReply,
 }) {
   const virtuosoRef = useRef(null)
   const isAtBottomRef = useRef(true)
@@ -215,6 +216,7 @@ function MessageList({
               onEdit={onEdit}
               onDelete={onDelete}
               onToggleReaction={onToggleReaction}
+              onReply={onReply}
             />
           )
         }}

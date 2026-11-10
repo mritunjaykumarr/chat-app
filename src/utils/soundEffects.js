@@ -111,3 +111,102 @@ export function playSendSound() {
   }
 }
 
+/**
+ * Fun Easter Egg "F99":
+ * Plays an urgent retro phone ringtone / siren tune for 20 seconds
+ * and triggers phone vibration continuously until finished or stopped.
+ * Returns { stop: () => void }
+ */
+export function playF99Alarm(onStop) {
+  let isRunning = true
+  const ctx = getAudioContext()
+  const startTime = Date.now()
+  const DURATION_MS = 20000
+
+  // 1. Phone Vibration
+  const startVibration = () => {
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate([400, 150, 400, 150, 600, 200])
+      } catch {
+        // ignore
+      }
+    }
+  }
+
+  startVibration()
+  const vibInterval = setInterval(() => {
+    if (!isRunning) return
+    startVibration()
+  }, 2000)
+
+  // 2. Synthesized Energetic Phone Ringtone / Siren
+  const playRingCycle = () => {
+    if (!ctx || !isRunning) return
+    try {
+      const now = ctx.currentTime
+      const notes = [880, 1174.66, 1318.51, 1760]
+
+      notes.forEach((freq, idx) => {
+        const osc = ctx.createOscillator()
+        const gain = ctx.createGain()
+        const noteStart = now + idx * 0.08
+
+        osc.type = 'triangle'
+        osc.frequency.setValueAtTime(freq, noteStart)
+
+        gain.gain.setValueAtTime(0.001, noteStart)
+        gain.gain.exponentialRampToValueAtTime(0.3, noteStart + 0.015)
+        gain.gain.exponentialRampToValueAtTime(0.001, noteStart + 0.075)
+
+        osc.connect(gain)
+        gain.connect(ctx.destination)
+
+        osc.start(noteStart)
+        osc.stop(noteStart + 0.075)
+      })
+    } catch {
+      // ignore
+    }
+  }
+
+  playRingCycle()
+  const ringInterval = setInterval(() => {
+    if (!isRunning) return
+    if (Date.now() - startTime >= DURATION_MS) {
+      stop()
+      return
+    }
+    playRingCycle()
+  }, 420)
+
+  const stop = () => {
+    if (!isRunning) return
+    isRunning = false
+    clearInterval(vibInterval)
+    clearInterval(ringInterval)
+
+    if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+      try {
+        navigator.vibrate(0)
+      } catch {
+        // ignore
+      }
+    }
+
+    onStop?.()
+  }
+
+  // 20-second timeout safeguard
+  const timer = setTimeout(() => {
+    stop()
+  }, DURATION_MS)
+
+  return {
+    stop: () => {
+      clearTimeout(timer)
+      stop()
+    },
+  }
+}
+

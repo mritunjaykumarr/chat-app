@@ -59,6 +59,28 @@ function ChatRoom() {
           return
         }
 
+        // Auto-assign admin if room has no creator_id (e.g. legacy room) or creator marked in localStorage
+        const isRoomCreatorInStorage =
+          typeof localStorage !== 'undefined' &&
+          localStorage.getItem(`is_creator_${roomCode}`) === 'true'
+
+        if ((!data.creator_id || isRoomCreatorInStorage) && currentId) {
+          if (!data.creator_id) {
+            await supabase
+              .from('rooms')
+              .update({ creator_id: currentId })
+              .eq('room_code', roomCode)
+              .is('creator_id', null)
+            data.creator_id = currentId
+          } else if (isRoomCreatorInStorage && data.creator_id !== currentId) {
+            await supabase
+              .from('rooms')
+              .update({ creator_id: currentId })
+              .eq('room_code', roomCode)
+            data.creator_id = currentId
+          }
+        }
+
         // Check if user is banned
         if (currentId) {
           const { data: banData } = await supabase

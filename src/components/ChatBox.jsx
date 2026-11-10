@@ -17,10 +17,11 @@ import { FaCrown } from 'react-icons/fa'
 import MessageList from './chat/MessageList.jsx'
 import MessageInput from './chat/MessageInput.jsx'
 import SettingsModal from './settings/SettingsModal.jsx'
+import InstallPromptModal from './pwa/InstallPromptModal.jsx'
 import { useRoomChannel } from '../hooks/useRoomChannel.js'
 import { useMessages } from '../hooks/useMessages.js'
 import { useSettings } from '../context/SettingsContext.jsx'
-import { playReceiveSound, playSendSound } from '../utils/soundEffects.js'
+import { playF99Alarm, playReceiveSound, playSendSound } from '../utils/soundEffects.js'
 import { supabase } from '../supabase/client.js'
 
 function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
@@ -31,10 +32,14 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [copied, setCopied] = useState(false)
   const [editingMessage, setEditingMessage] = useState(null)
+  const [replyingTo, setReplyingTo] = useState(null)
   const [memberToRemove, setMemberToRemove] = useState(null)
   const [memberToTransfer, setMemberToTransfer] = useState(null)
   const [messageToDelete, setMessageToDelete] = useState(null)
   const [kickedNotice, setKickedNotice] = useState(false)
+  const [f99Alert, setF99Alert] = useState(null)
+
+  const activeF99AlarmRef = useRef(null)
 
   // Combine identity with real-time settings nickname
   const effectiveIdentity = useMemo(
@@ -72,12 +77,47 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
     }, 2500)
   }, [onLeave])
 
+  // Fun Easter Egg "F99" trigger
+  const triggerF99 = useCallback((senderName) => {
+    activeF99AlarmRef.current?.stop()
+    setF99Alert({ senderName: senderName || 'Someone', secondsLeft: 20 })
+
+    const alarm = playF99Alarm(() => {
+      setF99Alert(null)
+    })
+    activeF99AlarmRef.current = alarm
+  }, [])
+
+  // F99 Countdown Interval
+  useEffect(() => {
+    if (!f99Alert) return
+    const timer = setInterval(() => {
+      setF99Alert((curr) => {
+        if (!curr || curr.secondsLeft <= 1) return null
+        return { ...curr, secondsLeft: curr.secondsLeft - 1 }
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [f99Alert])
+
+  useEffect(() => {
+    return () => {
+      activeF99AlarmRef.current?.stop()
+    }
+  }, [])
+
   // Track unread messages when window/tab is hidden
   const unreadHiddenCountRef = useRef(0)
 
   // Real-time sound, vibration, and background tab notifications for incoming messages
   const handleIncomingMessage = useCallback(
     (newMsg) => {
+      // 0. Fun Easter Egg: F99 20-second siren & vibration!
+      if (newMsg.message?.trim().toUpperCase() === 'F99') {
+        triggerF99(newMsg.sender_name)
+        return
+      }
+
       // 1. Web Audio API chime
       if (settings.notificationSound) {
         playReceiveSound()
@@ -128,6 +168,7 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
       settings.avatarColor,
       settings.notificationSound,
       settings.vibration,
+      triggerF99,
     ],
   )
 
@@ -171,15 +212,17 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
     onIncomingMessage: handleIncomingMessage,
   })
 
-  // Play send pop sound on message dispatch
+  // Play send pop sound on message dispatch & trigger F99 if typed
   const handleSendMessage = useCallback(
     (payload) => {
-      if (settings.notificationSound) {
+      if (payload?.text?.trim().toUpperCase() === 'F99') {
+        triggerF99(effectiveIdentity.name)
+      } else if (settings.notificationSound) {
         playSendSound()
       }
       sendMessage(payload)
     },
-    [sendMessage, settings.notificationSound],
+    [effectiveIdentity.name, sendMessage, settings.notificationSound, triggerF99],
   )
 
   const handleSendVoiceMessage = useCallback(
@@ -197,6 +240,69 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
     creatorId && effectiveIdentity?.id && creatorId === effectiveIdentity.id,
   )
   const isLocked = Boolean(roomData?.is_locked)
+
+  // Realtime subscription for room metadata (admin transfer, lock status)
+  useEffect(() => {
+    if (!roomCode) return
+
+    const channel = supabase
+      .channel(`room_meta:${roomCode}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'rooms',
+          filter: `room_code=eq.${roomCode}`,
+        },
+        (payload) => {
+          if (payload?.new) {
+            setRoomData((prev) => ({
+              ...prev,
+              creator_id: payload.new.creator_id,
+              is_locked: payload.new.is_locked,
+            }))
+          }
+        },
+      )
+      .subscribe()
+
+    return () => {
+      supabase.removeChannel(channel)
+    }
+  }, [roomCode])
+
+  // Auto-sync or claim admin if room has no creator_id yet (legacy rooms)
+  useEffect(() => {
+    if (!roomData?.creator_id && effectiveIdentity?.id && roomCode) {
+      async function syncCreator() {
+        const { data } = await supabase
+          .from('rooms')
+          .select('creator_id, is_locked')
+          .eq('room_code', roomCode)
+          .maybeSingle()
+
+        if (data?.creator_id) {
+          setRoomData((prev) => ({
+            ...prev,
+            creator_id: data.creator_id,
+            is_locked: data.is_locked,
+          }))
+        } else {
+          // Claim room admin for legacy or unowned rooms
+          await supabase
+            .from('rooms')
+            .update({ creator_id: effectiveIdentity.id })
+            .eq('room_code', roomCode)
+            .is('creator_id', null)
+
+          setRoomData((prev) => ({ ...prev, creator_id: effectiveIdentity.id }))
+        }
+      }
+
+      syncCreator()
+    }
+  }, [effectiveIdentity.id, roomCode, roomData?.creator_id])
 
   const otherUsers = useMemo(
     () => onlineUsers.filter((user) => user.sender_id !== effectiveIdentity.id),
@@ -330,7 +436,38 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
       style={viewportHeight ? { height: `${viewportHeight}px` } : undefined}
       className="app-background flex h-[100dvh] w-full flex-col overflow-hidden text-white sm:p-4"
     >
-      <section className="mx-auto flex h-full w-full max-w-5xl flex-1 min-h-0 flex-col overflow-hidden rounded-none border-0 bg-slate-950/70 shadow-card backdrop-blur-2xl sm:rounded-xl sm:border sm:border-white/15">
+      <section className={`mx-auto flex h-full w-full max-w-5xl flex-1 min-h-0 flex-col overflow-hidden rounded-none border-0 bg-slate-950/70 shadow-card backdrop-blur-2xl transition-all sm:rounded-xl sm:border ${
+        f99Alert ? 'ring-4 ring-rose-500 border-rose-500' : 'sm:border-white/15'
+      }`}>
+        {/* F99 Emergency Alarm Banner */}
+        <AnimatePresence>
+          {f99Alert && (
+            <motion.div
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="flex shrink-0 items-center justify-between gap-3 border-b border-rose-500/50 bg-gradient-to-r from-rose-600 via-amber-600 to-rose-600 px-3.5 py-2 text-white shadow-glow z-30"
+            >
+              <div className="flex items-center gap-2 font-bold text-xs sm:text-sm animate-pulse min-w-0">
+                <span className="text-lg shrink-0">🚨</span>
+                <span className="truncate">
+                  F99 SIREN! {f99Alert.senderName} triggered a 20s ringtone & vibration! ({f99Alert.secondsLeft}s)
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  activeF99AlarmRef.current?.stop()
+                  setF99Alert(null)
+                }}
+                className="rounded-lg bg-black/40 px-3 py-1 text-xs font-bold text-white hover:bg-black/60 transition active:scale-95 shrink-0"
+              >
+                Silence
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Kicked Alert Overlay */}
         <AnimatePresence>
           {kickedNotice && (
@@ -374,12 +511,12 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
 
                 {/* Admin Badge in Header */}
                 {isCurrentUserAdmin ? (
-                  <span className="hidden xs:inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
+                  <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold text-amber-300">
                     <FaCrown className="text-amber-400 text-[10px]" />
                     <span>You're the admin</span>
                   </span>
                 ) : adminNickname ? (
-                  <span className="hidden xs:inline-flex items-center gap-1 text-[11px] text-amber-300/80">
+                  <span className="inline-flex items-center gap-1 text-[11px] text-amber-300/80">
                     <FaCrown className="text-amber-400 text-[10px]" />
                     <span className="truncate max-w-[120px]">
                       Admin: {adminNickname}
@@ -595,9 +732,10 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
           onEdit={(msg) => setEditingMessage(msg)}
           onDelete={(msg, mode) => setMessageToDelete({ message: msg, mode })}
           onToggleReaction={toggleReaction}
+          onReply={(msg) => setReplyingTo(msg)}
         />
 
-        {/* Message Input Footer with Safe-Area Padding & Edit Support */}
+        {/* Message Input Footer with Safe-Area Padding, Reply & Edit Support */}
         <MessageInput
           onSendMessage={handleSendMessage}
           onSendVoiceMessage={handleSendVoiceMessage}
@@ -605,6 +743,8 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
           editingMessage={editingMessage}
           onCancelEdit={() => setEditingMessage(null)}
           onSaveEdit={handleSaveEdit}
+          replyingTo={replyingTo}
+          onCancelReply={() => setReplyingTo(null)}
         />
       </section>
 
@@ -615,6 +755,9 @@ function ChatBox({ roomCode, identity, roomData: initialRoomData, onLeave }) {
         roomCode={roomCode}
         onLeaveRoom={onLeave}
       />
+
+      {/* PWA Install App Popup Modal */}
+      <InstallPromptModal />
 
       {/* Confirmation Modal: Remove/Ban Member */}
       <AnimatePresence>
