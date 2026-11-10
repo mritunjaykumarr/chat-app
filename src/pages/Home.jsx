@@ -4,7 +4,7 @@ import { FiCopy, FiLoader, FiLogIn, FiMessageCircle, FiPlus } from 'react-icons/
 import { useNavigate } from 'react-router-dom'
 import RoomCard from '../components/RoomCard.jsx'
 import { hasSupabaseConfig, supabase } from '../supabase/client.js'
-import { setAnonymousName } from '../utils/anonymousIdentity.js'
+import { ensureAnonymousUser, setAnonymousName } from '../utils/anonymousIdentity.js'
 import { generateRoomCode } from '../utils/generateRoomCode.js'
 
 function normalizeRoomCode(value) {
@@ -22,6 +22,7 @@ function Home() {
   const [userName, setUserName] = useState(() => localStorage.getItem('anonymous_chat_user_name') || '')
 
   useEffect(() => {
+    ensureAnonymousUser()
     return () => window.clearTimeout(redirectTimerRef.current)
   }, [])
 
@@ -42,6 +43,9 @@ function Home() {
     setError('')
 
     try {
+      const user = await ensureAnonymousUser()
+      const creatorId = user?.id || localStorage.getItem('anonymous_chat_user_id')
+
       for (let attempt = 0; attempt < 8; attempt += 1) {
         const roomCode = generateRoomCode()
         const { data: existingRoom, error: lookupError } = await supabase
@@ -60,7 +64,7 @@ function Home() {
 
         const { error: insertError } = await supabase
           .from('rooms')
-          .insert({ room_code: roomCode })
+          .insert({ room_code: roomCode, creator_id: creatorId })
 
         if (!insertError) {
           setCreatedRoom(roomCode)
@@ -108,25 +112,51 @@ function Home() {
     setJoining(true)
     setError('')
 
-    const { data, error: lookupError } = await supabase
-      .from('rooms')
-      .select('id')
-      .eq('room_code', roomCode)
-      .maybeSingle()
+    try {
+      const user = await ensureAnonymousUser()
+      const currentUserId = user?.id || localStorage.getItem('anonymous_chat_user_id')
 
-    setJoining(false)
+      const { data, error: lookupError } = await supabase
+        .from('rooms')
+        .select('id, creator_id, is_locked')
+        .eq('room_code', roomCode)
+        .maybeSingle()
 
-    if (lookupError) {
-      setError(lookupError.message)
-      return
+      if (lookupError) {
+        setError(lookupError.message)
+        return
+      }
+
+      if (!data) {
+        setError('Invalid Room Code')
+        return
+      }
+
+      if (currentUserId) {
+        const { data: banData } = await supabase
+          .from('room_bans')
+          .select('banned_at')
+          .eq('room_code', roomCode)
+          .eq('user_id', currentUserId)
+          .maybeSingle()
+
+        if (banData) {
+          setError('You have been removed from this room by the admin.')
+          return
+        }
+      }
+
+      if (data.is_locked && data.creator_id !== currentUserId) {
+        setError('This room has been locked by the admin. No new joins are permitted.')
+        return
+      }
+
+      navigate(`/room/${roomCode}`)
+    } catch (err) {
+      setError(err.message || 'Unable to join room.')
+    } finally {
+      setJoining(false)
     }
-
-    if (!data) {
-      setError('Invalid Room Code')
-      return
-    }
-
-    navigate(`/room/${roomCode}`)
   }
 
   const copyCreatedRoom = async () => {

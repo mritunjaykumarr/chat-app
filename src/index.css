@@ -8,6 +8,31 @@
   background: #10131f;
 }
 
+html[data-font-size="S"] {
+  font-size: 14px;
+}
+html[data-font-size="M"] {
+  font-size: 16px;
+}
+html[data-font-size="L"] {
+  font-size: 18px;
+}
+
+html.light {
+  color-scheme: light;
+}
+
+html.light body {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+html.light .app-background {
+  background:
+    linear-gradient(135deg, rgba(241, 245, 249, 0.98), rgba(226, 232, 240, 0.95)),
+    linear-gradient(45deg, #e2e8f0 0%, #cbd5e1 50%, #94a3b8 100%);
+}
+
 * {
   box-sizing: border-box;
 }

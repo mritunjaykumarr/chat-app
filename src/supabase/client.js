@@ -13,9 +13,9 @@ export const supabase = createClient(
   supabaseKey || 'missing-supabase-key',
   {
     auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      detectSessionInUrl: false,
+      persistSession: true,
+      autoRefreshToken: true,
+      detectSessionInUrl: true,
     },
     realtime: {
       params: {
